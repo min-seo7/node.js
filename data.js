@@ -10,4 +10,13 @@ const members = [
 
 let add = (num1, num2) => num1 + num2; //한줄로가능!
 
-module.exports = { members, add };
+let getPerson = () => {
+  return {
+    firstName: "John",
+    lastName: "Doe",
+    age: 37,
+    email: "john@email.com",
+  };
+};
+
+module.exports = { members, add, getPerson }; //export
