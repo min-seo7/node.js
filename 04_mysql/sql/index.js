@@ -1,6 +1,8 @@
 const mysql = require("mysql2");
 const custSql = require("./customerSql"); // {custList,}
 
+require("dotenv").config({ path: __dirname + "/.env" });
+
 const pool = mysql.createPool({
   host: process.env.HOST,
   port: process.env.PORT,
