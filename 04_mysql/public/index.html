@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -48,12 +48,14 @@
         fetch("/email", {
           method: "post",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ param: data }), //자바스크립트객체를 json 문자열로 바꾸는 함수.
-        })
+          body: JSON.stringify({ param: data }),
+        }) //
           .then((resolve) => {
+            return resolve.json();
+          })
+          .then((result) => {
             if (result.retCode == "success") {
-              alert(result.retVal.accepted[0] + "에게 메일을 발송했습니다.");
-              // console.log(result.result);
+              alert("성공");
               document.querySelector('input[name="subject"]').value = "";
               document.querySelector('textarea[name="content"]').value = "";
             } else {

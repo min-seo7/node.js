@@ -2,23 +2,23 @@
   "posts": [
     {
       "id": "2",
-      "title": "fetch2 수정 연습해봅니다",
+      "title": "fetch TEST",
+      "author": "gywns"
+    },
+    {
+      "id": "8",
+      "title": "fetch연습",
       "author": "admin"
     },
     {
       "id": "9",
-      "title": "fetch9연습해봅니다",
+      "title": "fetch연습",
       "author": "admin"
     },
     {
-      "id": 5,
-      "title": "fetch5연습",
-      "author": "admin"
-    },
-    {
-      "id": 4,
-      "title": "fetch4연습",
-      "author": "admin"
+      "id": "7",
+      "title": "fetch TEST",
+      "author": "gywns"
     }
   ]
 }

@@ -1,7 +1,5 @@
 const mysql = require("mysql2");
-const custSql = require("./customerSql"); // {custList,}
-
-require("dotenv").config({ path: __dirname + "/.env" });
+const custSql = require("./customerSql");
 
 const pool = mysql.createPool({
   host: process.env.HOST,
@@ -23,6 +21,6 @@ async function query(alias, values) {
       }
     });
   });
-} // end of query.
+} // end of query
 
 module.exports = { query };

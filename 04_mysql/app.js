@@ -4,133 +4,176 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const multer = require("multer");
 const xlsx = require("xlsx");
-const fs = require("fs");
+const ExcelJS = require("exceljs");
+require("dotenv").config({ path: "./sql/.env" });
+const nodemailer = require("./nodemailer");
 
 const mysql = require("./sql");
-const customerSql = require("./sql");
 
-const app = express();
-app.use(bodyParser.json());
-
-// 파일 업로드 설정
+// 파일업로드 multer
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads"),
-  filename: (req, file, cb) => cb(null, Date.now() + "_" + file.originalname),
+  destination: function (req, file, cb) {
+    // 저장경로
+    cb(null, "uploads");
+  },
+  filename: function (req, file, cb) {
+    // 업로드 파일명
+    let fn = Buffer.from(file.originalname, "latin1").toString("utf-8");
+    cb(null, Date.now() + "_" + fn);
+  },
 });
+
+// Multer 인스턴스 생성
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-// 파일 다운로드 폴더 생성
-const downloadDir = path.join(__dirname, "downloads");
-if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir);
+const app = express();
+app.use(bodyParser.json());
 
-// 루트 확인
-app.get("/", (req, res) => res.send("Root 경로"));
+app.get("/", (req, res) => {
+  res.send("Root 경로");
+});
 
-// 이메일 관련은 생략
+app.get("/email", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-// 1. 엑셀 업로드 → DB 저장
-app.post("/excel", upload.single("myFile"), async (req, res) => {
+app.post("/email", async (req, res) => {
   try {
-    const workbook = xlsx.readFile(`./uploads/${req.file.filename}`);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const sheetJson = xlsx.utils.sheet_to_json(sheet);
-
-    const sorted = sheetJson.sort((a, b) => a.name.localeCompare(b.name));
-
-    for (const customer of sorted) {
-      await mysql.query("customerInsert", customer);
-    }
-
-    res.send("엑셀 업로드 및 DB 저장 완료");
+    let result = await nodemailer.sendEmail(req.body.param);
+    console.log(result);
+    res.send("메일발송 성공");
   } catch (err) {
-    console.error("업로드 오류:", err);
-    res.status(500).send("업로드 처리 실패");
+    res.send("메일발송 실패");
   }
 });
 
-// 2. 엑셀 다운로드 → DB → 엑셀파일 생성
-app.get("/excel-download", async (req, res) => {
-  try {
-    const customers = await mysql.query("customerList");
-
-    const worksheet = xlsx.utils.json_to_sheet(customers);
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, "Customers");
-
-    const filePath = path.join(downloadDir, "customers.xlsx");
-    xlsx.writeFile(workbook, filePath);
-
-    res.download(filePath, "customers.xlsx", (err) => {
-      if (!err) fs.unlink(filePath, () => {});
-    });
-  } catch (err) {
-    console.error("다운로드 오류:", err);
-    res.status(500).send("엑셀 다운로드 실패");
-  }
-});
-
-// 업로드용 HTML 폼 (선택사항)
+// 이메일 발송화면
 app.get("/excel", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "excel.html"));
 });
 
-// 고객 CRUD
+app.post("/excel", upload.single("myFile"), async (req, res) => {
+  console.log(req.file); // 업로드된 파일의 정보
+  console.log(req.body); // 요청 몸체의 정보
+  const workbook = xlsx.readFile(`./uploads/${req.file.filename}`);
+  const firstSheetName = workbook.SheetNames[0]; // 첫번째 시트
+  // 시트명으로 첫번째 시트가져오기
+  const firstSheet = workbook.Sheets[firstSheetName];
+  // 첫번째 시트의 데이터를 json으로 생성
+  const firstSheetJson = xlsx.utils.sheet_to_json(firstSheet);
+  console.log(firstSheetJson);
+
+  const fsj = firstSheetJson // 객체는 순서가 없음
+    .sort((a, b) => {
+      return a.name < b.name;
+    });
+
+  // fsj.forEach(async (data) => {
+  //   let result = await mysql.query("customerInsert", data);
+  // });
+  for (const data of fsj) {
+    await mysql.query("customerInsert", data);
+  }
+
+  if (!req.file) {
+    res.send("이미지 처리가능함");
+  } else {
+    res.send("업로드 완료");
+  }
+});
+
+// db데이터 시트변환
+app.get("/download-excel", async (req, res) => {
+  try {
+    // 1. DB에서 데이터 조회 (예시: 모든 고객 데이터)
+    const results = await mysql.query("customerList");
+
+    // 2. JSON 데이터를 시트로 변환
+    const worksheet = xlsx.utils.json_to_sheet(results);
+
+    // 3. 워크북 생성 및 시트 추가
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Customers");
+
+    // 4. 워크북을 버퍼로 변환 (파일로 저장하지 않고 바로 전송)
+    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    // 5. 다운로드 응답 헤더 설정
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="customers.xlsx"'
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    // 6. 버퍼 전송
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("엑셀 파일 생성 실패");
+  }
+});
+
+// 조회
 app.get("/customers", async (req, res) => {
   try {
-    const result = await mysql.query("customerList");
-    res.send(result);
+    let result = await mysql.query("customerList"); // 상수로 지정해둔 custSql에서 key값으로 value에 해당하는 쿼리문을 가져옴
+    res.send(result); // 결과 출력
   } catch (err) {
-    res.status(500).send("에러: " + err);
+    res.send("에러발생=>" + err);
   }
 });
 
+// 추가
 app.post("/customer", async (req, res) => {
   try {
-    const data = req.body.param;
-    const result = await mysql.query("customerInsert", data);
+    console.log(req.body.param);
+    let data = req.body.param;
+    let result = await mysql.query("customerInsert", data);
     res.send(result);
   } catch (err) {
-    res.status(500).send("에러: " + err);
+    res.send("에러발생=>" + err);
   }
 });
 
+// 수정
 app.put("/customer", async (req, res) => {
   try {
-    const data = req.body.param;
-    const result = await mysql.query("customerUpdate", [data, data.id]);
+    console.log(req.body.param);
+    let data = req.body.param;
+    let result = await mysql.query("customerUpdate", data);
     res.send(result);
   } catch (err) {
-    res.status(500).send("에러: " + err);
+    res.send("에러발생=>" + err);
   }
 });
 
+// 삭제
 app.delete("/customer/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await mysql.query("customerDelete", id);
+    console.log(req.params);
+    let { id } = req.params;
+    let result = await mysql.query("customerDelete", id);
     res.send(result);
   } catch (err) {
-    res.status(500).send("에러: " + err);
+    res.send("에러발생=>" + err);
   }
 });
 
-// 서버 시작
 app.listen(3000, () => {
-  console.log("http://localhost:3000 running...");
+  console.log("http://localhost:3000 running...!!!!!!");
 });
 
-// console.log(custSql["customerInsert"]);
+// console.log(custSql["customerList"]);
 
-// query("customerList", [
-//   {
-//     name: "username",
-//     email: "user@email.com",
-//     phone: "010-0101-0101",
-//     address: "",
-//   },
-//   1,
-// ]);
+// query("customerInsert", {
+//   name: "123",
+//   email: "123@email.com",
+//   phone: "010-0202-0303",
+//   address: "",
+// });
