@@ -34,7 +34,7 @@ const createCryptoPassword = (plainPassword, salt) => {
 async function main() {
   const salt = await createSalt();
   const pw = await createCryptoPassword("1111", salt);
-  console.log(pw);
+  console.log(pw.password);
 }
 
 main();
