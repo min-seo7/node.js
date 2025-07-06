@@ -1,3 +1,5 @@
+//운영체제 관련 유틸리티함수 및 속성 정보를 제공하는 OS모듈
+
 const os = require("os");
 
 console.log(os.arch());
