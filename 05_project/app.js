@@ -59,28 +59,36 @@ app.get("/download/:productId/:fileName", (req, res) => {
   }
 });
 
-//업로드
-app.post("/upload/:filename/:pid", (req, res) => {
-  const { filename, pid } = req.params; //params는 {filename: 'sample.jpg', product:3 } 형태로 넘어옴.
-  //const filePath = `${__dirname}/uploads/${pid}/${filename}`; // 파일경로 [../05_project/uploads/sample.jpg]로!
+// 업로드.
+app.post("/upload/:filename/:pid/:type", (req, res) => {
+  const { filename, pid, type } = req.params; // {filename: 'sample.jpg', product: 3}
+  // const filePath = `${__dirname}/uploads/${pid}/${filename}`; // ../05_project/uploads/sample.jpg
   let productDir = path.join(uploadDir, pid);
   if (!fs.existsSync(productDir)) {
     fs.mkdirSync(productDir);
   }
 
-  const safeFilename = path.basename(filename);
-  const filepath = path.join(uploadDir, pid, safeFilename);
+  const safeFilename = path.basename(filename); // 경로공격.
+  const filePath = path.join(uploadDir, pid, safeFilename);
 
-  //try{let base64data = res.body.data}
+  try {
+    let base64Data = req.body.data;
+    let data = base64Data.slice(base64Data.indexOf(";base64,") + 8);
+    fs.writeFile(filePath, data, "base64", async (err) => {
+      await query("productImageInsert", [
+        { product_id: pid, type: type, path: filename },
+      ]);
 
-  let data = req.body.data.slice(req.body.data.indexOf(";base64,") + 8); //요청 바디의 data만! [index.htmp의 하단 바디부분 data]
-  fs.writeFile(filepath, data, "base64", (err) => {
-    if (err) {
-      res.send("error");
-    } else {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("error");
+      }
       res.send("success");
-    }
-  });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(400).send("invalid data");
+  }
 });
 
 // 데이터 쿼리.
