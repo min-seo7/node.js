@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!--axios라이브러리 추가-->
+  </head>
+  <body>
+    <form action="">
+      <input type="file" name="base64" />
+      <button type="button">Upload</button>
+    </form>
+
+    <script>
+      //파일업로드
+      let data = ""; //base64인코딩 데이터.
+      let fn; //파일명
+      //파일선택.
+      document
+        .querySelector('input[name="base64"]')
+        .addEventListener("change", (e) => {
+          //console.dir(e.target.files[0]); //업로드된 파일의 첫번째 값.
+          let file = e.target.files[0];
+          fn = file.name;
+          let fr = new FileReader();
+          fr.onload = function (evt) {
+            console.log(evt.target.result); //이벤트가 발생하는 타겟 중 result(문자열)만! axios에 전달 할 값.
+            data = evt.target.result;
+          };
+          fr.readAsDataURL(file);
+        });
+
+      //저장.
+      document
+        .querySelector('button[type="button"]')
+        .addEventListener("click", async (e) => {
+          let result = await axios({
+            method: "post",
+            url: "/upload/" + fn + "/8/",
+            data: { data }, //key:value형태이나 키와 value의 값이 동일해서 함축사용.
+          });
+          console.log(result);
+        });
+    </script>
+  </body>
+</html>

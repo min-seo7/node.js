@@ -1,5 +1,5 @@
 const mysql = require("mysql2");
-const sql = require("./product.js");
+const sql = require("./product.js"); // {custList,}
 
 const pool = mysql.createPool({
   host: process.env.HOST,
@@ -10,9 +10,7 @@ const pool = mysql.createPool({
   connectionLimit: process.env.LIMIT,
 });
 
-//console.log(sql["productList"]);
-
-async function query(alias, values = [], where = "") {
+async function query(alias, values, where = "") {
   return new Promise((resolve, reject) => {
     console.log(sql[alias].query + where);
     pool.query(sql[alias].query + where, values, (err, result) => {
@@ -24,6 +22,6 @@ async function query(alias, values = [], where = "") {
       }
     });
   });
-} // end of query
+} // end of query.
 
 module.exports = { query };
