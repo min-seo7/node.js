@@ -1,4 +1,4 @@
-async function json_func() { //async함수선-> await 사용! 
+async function json_func() { //async함수선언-> await 사용! 
   try {//post 요청
     let promise = await fetch("http://localhost:3000/posts", { //fetch():네트워크 요청함수
       method: "post", //서버에 데이터생성 전달.
